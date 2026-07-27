@@ -1,28 +1,21 @@
 """
 main.py
 ----------
-Entry point for Swim Finder AI.
-
-Defines the Kivy App and the two Screens (Input / Results), reads the
-form values, calls the analysis engines in logic/, and renders the
-results dynamically onto the results screen.
+Entry point for Swim Finder AI. Defines the Kivy App and the two Screens (Input / Results),
+reads the form values, calls the analysis engines in logic/, and renders the results dynamically
+onto the results screen.
 
 HOW TO RUN IN PYDROID 3:
-1. Copy the whole "swim_finder_ai" folder onto your device (keep the
-   folder structure exactly as-is - main.py, swimfinder.kv, data/, logic/
-   must all stay together).
-2. Make sure the "kivy" package is installed in Pydroid 3
-   (Pydroid 3 -> Pip -> search "kivy" -> install).
+1. Copy the whole "swim_finder_ai" folder onto your device (keep the folder structure
+   exactly as-is - main.py, swimfinder.kv, data/, logic/ must all stay together).
+2. Make sure the "kivy" package is installed in Pydroid 3 (Pydroid 3 -> Pip -> search "kivy" -> install).
 3. Open main.py in Pydroid 3 and press Run.
 
-Kivy automatically loads "swimfinder.kv" because it matches this App's
-class name (SwimFinderApp -> swimfinder.kv), so no manual Builder.load
-call is needed here.
+Kivy automatically loads "swimfinder.kv" because it matches this App's class name
+(SwimFinderApp -> swimfinder.kv), so no manual Builder.load call is needed here.
 """
 
 import threading
-import webbrowser
-
 from kivy.app import App
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.boxlayout import BoxLayout
@@ -39,8 +32,8 @@ from logic.advice_generator import generate_advice
 from logic.weather_service import fetch_weather
 
 MONTHS = [
-    'January', 'February', 'March', 'April', 'May', 'June', 'July',
-    'August', 'September', 'October', 'November', 'December',
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
 
@@ -50,8 +43,8 @@ class InputScreen(Screen):
 
 
 class ResultsScreen(Screen):
-    """Displays the Swim Analysis, Tackle Recommendation, Fish Prediction
-    and Fishing Advice results, built dynamically in Python."""
+    """Displays the Swim Analysis, Tackle Recommendation, Fish Prediction and Fishing Advice results,
+    built dynamically in Python."""
     pass
 
 
@@ -64,8 +57,10 @@ class SwimFinderApp(App):
         self.sm = ScreenManager()
         self.input_screen = InputScreen(name='input')
         self.results_screen = ResultsScreen(name='results')
+
         self.sm.add_widget(self.input_screen)
         self.sm.add_widget(self.results_screen)
+
         self._gps_fix_received = False
         return self.sm
 
@@ -74,8 +69,7 @@ class SwimFinderApp(App):
     # ------------------------------------------------------------------
     def _read_inputs(self):
         """Reads and validates all form fields from the input screen.
-        Returns (inputs_dict, error_message). error_message is None if
-        the inputs are valid."""
+        Returns (inputs_dict, error_message). error_message is None if the inputs are valid."""
         ids = self.input_screen.ids
         error = None
 
@@ -121,7 +115,6 @@ class SwimFinderApp(App):
     def analyse_swim(self):
         inputs, error = self._read_inputs()
         error_label = self.input_screen.ids.error_label
-
         if error:
             error_label.text = error
             return
@@ -138,37 +131,26 @@ class SwimFinderApp(App):
     def go_back(self):
         self.sm.current = 'input'
 
-    def open_google_maps(self):
-        """Opens Google Maps in the browser for location selection."""
-        try:
-            webbrowser.open("https://maps.google.com")
-        except Exception as exc:
-            self.input_screen.ids.error_label.text = f"Could not open maps: {exc}"
-
     def open_maps_at_location(self):
-        """Opens Google Maps centered at the entered coordinates."""
+        """Centers the embedded MapView on the user-entered coordinates."""
         inputs, error = self._read_inputs()
         if error or inputs['lat'] is None or inputs['lon'] is None:
             self.input_screen.ids.error_label.text = "Enter valid latitude and longitude first"
             return
-        
+
         lat = inputs['lat']
         lon = inputs['lon']
-        maps_url = f"https://maps.google.com/maps?q={lat},{lon}&z=15"
-        try:
-            webbrowser.open(maps_url)
-        except Exception as exc:
-            self.input_screen.ids.error_label.text = f"Could not open maps: {exc}"
+
+        # Center embedded map widget
+        ids = self.input_screen.ids
+        if hasattr(ids, 'map_view'):
+            ids.map_view.center_on(lat, lon)
+            ids.map_view.zoom = 14
+
+        self.input_screen.ids.error_label.text = ""
 
     # ------------------------------------------------------------------
-    # V2: Auto-fetch GPS location + current weather/wind/pressure/
-    # sunrise/sunset. Runs from the "Use My Location & Weather" button.
-    #
-    # Flow: request Android location permission -> start GPS -> on first
-    # fix, fill in lat/lon and stop GPS -> fetch weather for that fix on
-    # a background thread (network must never block the UI thread) ->
-    # marshal the result back onto the UI thread and fill in the rest
-    # of the form.
+    # Auto-fetch GPS location + current weather/wind/pressure
     # ------------------------------------------------------------------
     def fetch_location_and_weather(self):
         self._gps_fix_received = False
@@ -176,12 +158,6 @@ class SwimFinderApp(App):
         self._request_android_permissions(self._on_permissions_result)
 
     def _request_android_permissions(self, callback):
-        """Requests the Android runtime location permission. Only
-        applies to a compiled APK (python-for-android provides the
-        'android.permissions' module); when running in Pydroid 3 this
-        import fails, so we skip straight to the callback - in that
-        case Location must instead be granted to the Pydroid 3 app
-        itself via Android Settings > Apps > Pydroid 3 > Permissions."""
         try:
             from android.permissions import request_permissions, Permission
             request_permissions(
@@ -193,9 +169,12 @@ class SwimFinderApp(App):
 
     def _on_permissions_result(self, permissions, grant_results):
         if grant_results and not all(grant_results):
-            Clock.schedule_once(lambda dt: self._show_location_error(
-                "Location permission was denied. Enable it in Android "
-                "Settings to use this feature."), 0)
+            Clock.schedule_once(
+                lambda dt: self._show_location_error(
+                    "Location permission was denied. Enable it in Android Settings to use this feature."
+                ),
+                0,
+            )
             return
         Clock.schedule_once(lambda dt: self._start_gps(), 0)
 
@@ -203,9 +182,11 @@ class SwimFinderApp(App):
         self.input_screen.ids.location_status.text = "Getting GPS location..."
         try:
             from plyer import gps
-            gps.configure(on_location=self._on_gps_location, on_status=self._on_gps_status)
+            gps.configure(
+                on_location=self._on_gps_location,
+                on_status=self._on_gps_status,
+            )
             gps.start(minTime=1000, minDistance=0)
-            # Safety timeout in case no GPS fix ever arrives (e.g. indoors)
             Clock.schedule_once(self._gps_timeout, 20)
         except NotImplementedError:
             self._show_location_error("GPS is not available on this device.")
@@ -218,7 +199,6 @@ class SwimFinderApp(App):
         Clock.schedule_once(lambda dt: self._handle_gps_fix(lat, lon), 0)
 
     def _on_gps_status(self, **kwargs):
-        # Informational only - not required for the app to function.
         pass
 
     def _handle_gps_fix(self, lat, lon):
@@ -230,6 +210,12 @@ class SwimFinderApp(App):
         ids = self.input_screen.ids
         ids.lat_input.text = f"{lat:.5f}"
         ids.lon_input.text = f"{lon:.5f}"
+
+        # Update MapView on GPS fix
+        if hasattr(ids, 'map_view'):
+            ids.map_view.center_on(lat, lon)
+            ids.map_view.zoom = 14
+
         ids.location_status.text = "Location found. Fetching weather..."
         threading.Thread(target=self._weather_worker, args=(lat, lon), daemon=True).start()
 
@@ -246,23 +232,22 @@ class SwimFinderApp(App):
             pass
 
     def _weather_worker(self, lat, lon):
-        """Runs on a background thread - must not touch any Kivy widgets
-        directly, only schedule work back onto the main thread via Clock."""
         try:
             weather = fetch_weather(lat, lon)
             Clock.schedule_once(lambda dt: self._on_weather_fetched(weather), 0)
         except Exception as exc:
-            Clock.schedule_once(lambda dt: self._show_location_error(
-                f"Weather fetch failed: {exc}"), 0)
+            Clock.schedule_once(lambda dt: self._show_location_error(f"Weather fetch failed: {exc}"), 0)
 
     def _on_weather_fetched(self, weather):
         ids = self.input_screen.ids
         ids.weather_spinner.text = weather["weather"]
         ids.wind_dir_spinner.text = weather["wind_dir"]
+
         if weather["wind_speed_mph"] is not None:
             ids.wind_speed_input.text = str(weather["wind_speed_mph"])
         if weather["pressure_hpa"] is not None:
             ids.pressure_input.text = str(weather["pressure_hpa"])
+
         ids.location_status.text = (
             f"Updated. Sunrise {weather['sunrise']} · Sunset {weather['sunset']}"
         )
@@ -271,45 +256,58 @@ class SwimFinderApp(App):
         self.input_screen.ids.location_status.text = message
 
     def on_stop(self):
-        # Release the GPS if the app is closed mid-fetch.
         self._stop_gps()
 
     # ------------------------------------------------------------------
     # Results rendering helpers
     # ------------------------------------------------------------------
     def _style_card(self, widget):
-        """Attaches a rounded, dark card background to a BoxLayout that
-        tracks the widget's position/size as it changes."""
         with widget.canvas.before:
             Color(0.13, 0.16, 0.19, 1)
             rect = RoundedRectangle(pos=widget.pos, size=widget.size, radius=[12])
-        widget.bind(pos=lambda inst, val: setattr(rect, 'pos', val))
-        widget.bind(size=lambda inst, val: setattr(rect, 'size', val))
+            widget.bind(pos=lambda inst, val: setattr(rect, 'pos', val))
+            widget.bind(size=lambda inst, val: setattr(rect, 'size', val))
 
     def _make_card(self, title_text, rows):
-        """Builds a titled card containing label/value rows."""
-        card = BoxLayout(orientation='vertical', padding=dp(12), spacing=dp(4),
-                          size_hint_y=None)
+        card = BoxLayout(orientation='vertical', padding=dp(12), spacing=dp(4), size_hint_y=None)
         card.bind(minimum_height=card.setter('height'))
         self._style_card(card)
 
-        title = Label(text=title_text, bold=True, font_size='16sp',
-                       color=(0.3, 0.85, 0.65, 1), size_hint_y=None, height=dp(26),
-                       halign='left', valign='middle')
+        title = Label(
+            text=title_text,
+            bold=True,
+            font_size='16sp',
+            color=(0.3, 0.85, 0.65, 1),
+            size_hint_y=None,
+            height=dp(26),
+            halign='left',
+            valign='middle',
+        )
         title.bind(size=title.setter('text_size'))
         card.add_widget(title)
 
         for label_text, value_text in rows:
-            row = BoxLayout(orientation='horizontal', size_hint_y=None,
-                             height=dp(24), spacing=dp(8))
-            label_widget = Label(text=str(label_text), color=(0.7, 0.78, 0.78, 1),
-                                  font_size='13sp', halign='left', valign='middle',
-                                  size_hint_x=0.45)
+            row = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(24), spacing=dp(8))
+            label_widget = Label(
+                text=str(label_text),
+                color=(0.7, 0.78, 0.78, 1),
+                font_size='13sp',
+                halign='left',
+                valign='middle',
+                size_hint_x=0.45,
+            )
             label_widget.bind(size=label_widget.setter('text_size'))
-            value_widget = Label(text=str(value_text), color=(0.95, 0.95, 0.95, 1),
-                                  font_size='13sp', halign='left', valign='middle',
-                                  size_hint_x=0.55)
+
+            value_widget = Label(
+                text=str(value_text),
+                color=(0.95, 0.95, 0.95, 1),
+                font_size='13sp',
+                halign='left',
+                valign='middle',
+                size_hint_x=0.55,
+            )
             value_widget.bind(size=value_widget.setter('text_size'))
+
             row.add_widget(label_widget)
             row.add_widget(value_widget)
             card.add_widget(row)
@@ -317,19 +315,31 @@ class SwimFinderApp(App):
         return card
 
     def _make_advice_card(self, advice_text):
-        card = BoxLayout(orientation='vertical', padding=dp(12), spacing=dp(6),
-                          size_hint_y=None)
+        card = BoxLayout(orientation='vertical', padding=dp(12), spacing=dp(6), size_hint_y=None)
         card.bind(minimum_height=card.setter('height'))
         self._style_card(card)
 
-        title = Label(text="Fishing Advice", bold=True, font_size='16sp',
-                       color=(0.3, 0.85, 0.65, 1), size_hint_y=None, height=dp(26),
-                       halign='left', valign='middle')
+        title = Label(
+            text="Fishing Advice",
+            bold=True,
+            font_size='16sp',
+            color=(0.3, 0.85, 0.65, 1),
+            size_hint_y=None,
+            height=dp(26),
+            halign='left',
+            valign='middle',
+        )
         title.bind(size=title.setter('text_size'))
         card.add_widget(title)
 
-        body = Label(text=advice_text, color=(0.9, 0.92, 0.92, 1), size_hint_y=None,
-                     halign='left', valign='top', font_size='13sp')
+        body = Label(
+            text=advice_text,
+            color=(0.9, 0.92, 0.92, 1),
+            size_hint_y=None,
+            halign='left',
+            valign='top',
+            font_size='13sp',
+        )
         body.bind(width=lambda inst, w: setattr(inst, 'text_size', (w, None)))
         body.bind(texture_size=lambda inst, ts: setattr(inst, 'height', ts[1]))
         card.add_widget(body)
