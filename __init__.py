@@ -1,36 +1,4 @@
-name: Build APK
+"""swim-finder package initializer."""
 
-# Builds the Android APK automatically every time you push to "main",
-# and can also be triggered manually from the Actions tab (the
-# workflow_dispatch trigger below adds a "Run workflow" button).
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # Uses the official, actively-maintained kivy/buildozer Docker image
-      # directly (pre-built, no local Docker build step that can break).
-      # We override the entrypoint to pipe an endless stream of "y"
-      # answers into the build, so any Android SDK license prompt gets
-      # auto-accepted even though buildozer's own accept_sdk_license
-      # option isn't reliably triggering it in this image.
-      - name: Build APK with official Buildozer Docker image
-        run: |
-          docker run --rm \
-            --volume "${{ github.workspace }}":/home/user/hostcwd \
-            --entrypoint /bin/bash \
-            kivy/buildozer \
-            -c "yes | buildozer android debug"
-
-      - name: Upload APK as a downloadable artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: swim-finder-ai-apk
-          path: bin/*.apk
+__all__ = ["__version__"]
+__version__ = "0.0.1"
