@@ -20,11 +20,8 @@ source.include_exts = py,kv,png,jpg,jpeg,atlas
 # (str) Version of your application
 version = 0.1
 
-# (list) Application requirements — python3 + kivy is all V1 needed.
-# V2 adds plyer for GPS access. Weather comes from the free Open-Meteo
-# API using only Python's built-in urllib, so no extra dependency
-# is needed for that part.
-requirements = python3,kivy==2.3.1,plyer
+# (list) Application requirements — includes kivy, plyer for GPS, and kivy_garden.mapview for the in-app map.
+requirements = python3,kivy==2.3.1,plyer,kivy_garden.mapview,requests,urllib3,certifi,idna,chardet
 
 # (str) Icon of the application (optional - add a 512x512 png later and
 # uncomment this line to give the app a custom home-screen icon)
