@@ -1,0 +1,234 @@
+"""
+main.py
+----------
+Entry point for Swim Finder AI.
+
+Defines the Kivy App and the two Screens (Input / Results), reads the
+form values, calls the analysis engines in logic/, and renders the
+results dynamically onto the results screen.
+
+HOW TO RUN IN PYDROID 3:
+1. Copy the whole "swim_finder_ai" folder onto your device (keep the
+   folder structure exactly as-is - main.py, swimfinder.kv, data/, logic/
+   must all stay together).
+2. Make sure the "kivy" package is installed in Pydroid 3
+   (Pydroid 3 -> Pip -> search "kivy" -> install).
+3. Open main.py in Pydroid 3 and press Run.
+
+Kivy automatically loads "swimfinder.kv" because it matches this App's
+class name (SwimFinderApp -> swimfinder.kv), so no manual Builder.load
+call is needed here.
+"""
+
+from kivy.app import App
+from kivy.uix.screenmanager import Screen, ScreenManager
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.core.window import Window
+from kivy.metrics import dp
+from kivy.graphics import Color, RoundedRectangle
+
+from logic.swim_analysis import analyse_swim as run_swim_analysis
+from logic.tackle_engine import recommend_tackle
+from logic.fish_predictor import predict_species
+from logic.advice_generator import generate_advice
+
+MONTHS = [
+    'January', 'February', 'March', 'April', 'May', 'June', 'July',
+    'August', 'September', 'October', 'November', 'December',
+]
+
+
+class InputScreen(Screen):
+    """The form where the angler enters swim/location/condition details."""
+    pass
+
+
+class ResultsScreen(Screen):
+    """Displays the Swim Analysis, Tackle Recommendation, Fish Prediction
+    and Fishing Advice results, built dynamically in Python."""
+    pass
+
+
+class SwimFinderApp(App):
+
+    def build(self):
+        self.title = "Swim Finder AI"
+        Window.clearcolor = (0.07, 0.09, 0.11, 1)
+
+        self.sm = ScreenManager()
+        self.input_screen = InputScreen(name='input')
+        self.results_screen = ResultsScreen(name='results')
+        self.sm.add_widget(self.input_screen)
+        self.sm.add_widget(self.results_screen)
+        return self.sm
+
+    # ------------------------------------------------------------------
+    # Input handling
+    # ------------------------------------------------------------------
+    def _read_inputs(self):
+        """Reads and validates all form fields from the input screen.
+        Returns (inputs_dict, error_message). error_message is None if
+        the inputs are valid."""
+        ids = self.input_screen.ids
+        error = None
+
+        def to_float(text_input, default=None, field_name=""):
+            nonlocal error
+            text = text_input.text.strip()
+            if not text:
+                if default is not None:
+                    return default
+                error = f"Please enter a value for {field_name}."
+                return None
+            try:
+                return float(text)
+            except ValueError:
+                error = f"Please enter a valid number for {field_name}."
+                return None
+
+        lat = to_float(ids.lat_input, field_name="GPS Latitude")
+        lon = to_float(ids.lon_input, field_name="GPS Longitude")
+        wind_speed = to_float(ids.wind_speed_input, default=0.0)
+        pressure = to_float(ids.pressure_input, default=1013.0)
+
+        month_name = ids.month_spinner.text
+
+        inputs = {
+            "lat": lat,
+            "lon": lon,
+            "water_type": ids.water_type_spinner.text,
+            "species": ids.species_spinner.text,
+            "time_of_day": ids.time_spinner.text,
+            "month": month_name,
+            "month_num": MONTHS.index(month_name) + 1,
+            "weather": ids.weather_spinner.text,
+            "wind_dir": ids.wind_dir_spinner.text,
+            "wind_speed_mph": wind_speed,
+            "pressure_hpa": pressure,
+        }
+        return inputs, error
+
+    # ------------------------------------------------------------------
+    # Button actions (called from swimfinder.kv)
+    # ------------------------------------------------------------------
+    def analyse_swim(self):
+        inputs, error = self._read_inputs()
+        error_label = self.input_screen.ids.error_label
+
+        if error:
+            error_label.text = error
+            return
+        error_label.text = ''
+
+        swim = run_swim_analysis(inputs)
+        tackle = recommend_tackle(inputs, swim)
+        predictions = predict_species(inputs)
+        advice = generate_advice(inputs, swim, tackle, predictions)
+
+        self._render_results(inputs, swim, tackle, predictions, advice)
+        self.sm.current = 'results'
+
+    def go_back(self):
+        self.sm.current = 'input'
+
+    # ------------------------------------------------------------------
+    # Results rendering helpers
+    # ------------------------------------------------------------------
+    def _style_card(self, widget):
+        """Attaches a rounded, dark card background to a BoxLayout that
+        tracks the widget's position/size as it changes."""
+        with widget.canvas.before:
+            Color(0.13, 0.16, 0.19, 1)
+            rect = RoundedRectangle(pos=widget.pos, size=widget.size, radius=[12])
+        widget.bind(pos=lambda inst, val: setattr(rect, 'pos', val))
+        widget.bind(size=lambda inst, val: setattr(rect, 'size', val))
+
+    def _make_card(self, title_text, rows):
+        """Builds a titled card containing label/value rows."""
+        card = BoxLayout(orientation='vertical', padding=dp(12), spacing=dp(4),
+                          size_hint_y=None)
+        card.bind(minimum_height=card.setter('height'))
+        self._style_card(card)
+
+        title = Label(text=title_text, bold=True, font_size='16sp',
+                       color=(0.3, 0.85, 0.65, 1), size_hint_y=None, height=dp(26),
+                       halign='left', valign='middle')
+        title.bind(size=title.setter('text_size'))
+        card.add_widget(title)
+
+        for label_text, value_text in rows:
+            row = BoxLayout(orientation='horizontal', size_hint_y=None,
+                             height=dp(24), spacing=dp(8))
+            label_widget = Label(text=str(label_text), color=(0.7, 0.78, 0.78, 1),
+                                  font_size='13sp', halign='left', valign='middle',
+                                  size_hint_x=0.45)
+            label_widget.bind(size=label_widget.setter('text_size'))
+            value_widget = Label(text=str(value_text), color=(0.95, 0.95, 0.95, 1),
+                                  font_size='13sp', halign='left', valign='middle',
+                                  size_hint_x=0.55)
+            value_widget.bind(size=value_widget.setter('text_size'))
+            row.add_widget(label_widget)
+            row.add_widget(value_widget)
+            card.add_widget(row)
+
+        return card
+
+    def _make_advice_card(self, advice_text):
+        card = BoxLayout(orientation='vertical', padding=dp(12), spacing=dp(6),
+                          size_hint_y=None)
+        card.bind(minimum_height=card.setter('height'))
+        self._style_card(card)
+
+        title = Label(text="Fishing Advice", bold=True, font_size='16sp',
+                       color=(0.3, 0.85, 0.65, 1), size_hint_y=None, height=dp(26),
+                       halign='left', valign='middle')
+        title.bind(size=title.setter('text_size'))
+        card.add_widget(title)
+
+        body = Label(text=advice_text, color=(0.9, 0.92, 0.92, 1), size_hint_y=None,
+                     halign='left', valign='top', font_size='13sp')
+        body.bind(width=lambda inst, w: setattr(inst, 'text_size', (w, None)))
+        body.bind(texture_size=lambda inst, ts: setattr(inst, 'height', ts[1]))
+        card.add_widget(body)
+
+        return card
+
+    def _render_results(self, inputs, swim, tackle, predictions, advice):
+        box = self.results_screen.ids.results_box
+        box.clear_widgets()
+
+        box.add_widget(self._make_card("Swim Analysis", [
+            ("Estimated water depth", f"{swim['depth_m']} m"),
+            ("Suggested casting distance", f"{swim['casting_distance_m']} m"),
+            ("Likely feeding areas", "; ".join(swim['feeding_areas'])),
+            ("Recommended zone", swim['zone_recommendation']),
+            ("Snag risk", swim['snag_risk']),
+            ("Confidence score", f"{swim['confidence_pct']}%"),
+        ]))
+
+        box.add_widget(self._make_card("Tackle Recommendation", [
+            ("Rod type", tackle['rod_type']),
+            ("Rod length", f"{tackle['rod_length_ft']} ft"),
+            ("Reel size", tackle['reel_size']),
+            ("Main line", tackle['mainline']),
+            ("Hooklength", tackle['hooklength']),
+            ("Hook size", tackle['hook_size']),
+            ("Method", tackle['method']),
+            ("Feeder weight", tackle['feeder_weight']),
+            ("Lead size", tackle['lead_size']),
+            ("Recommended bait", tackle['bait']),
+            ("Groundbait", tackle['groundbait']),
+            ("Loose feed", tackle['loose_feed']),
+        ]))
+
+        sorted_predictions = sorted(predictions.items(), key=lambda kv: kv[1], reverse=True)
+        box.add_widget(self._make_card("Fish Prediction", [
+            (species, f"{pct}%") for species, pct in sorted_predictions
+        ]))
+
+        box.add_widget(self._make_advice_card(advice))
+
+
+if __name__ == '__main__':
+    SwimFinderApp().run()

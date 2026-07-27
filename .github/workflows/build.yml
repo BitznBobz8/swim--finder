@@ -1,0 +1,29 @@
+name: Build APK
+
+# Builds the Android APK automatically every time you push to "main",
+# and can also be triggered manually from the Actions tab (the
+# workflow_dispatch trigger below adds a "Run workflow" button).
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
+        with:
+          workdir: .
+          buildozer_version: stable
+
+      - name: Upload APK as a downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: swim-finder-ai-apk
+          path: ${{ steps.buildozer.outputs.filename }}

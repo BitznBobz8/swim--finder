@@ -1,0 +1,229 @@
+#:kivy 2.1.0
+# ---------------------------------------------------------------------------
+# swimfinder.kv
+# ---------------------------------------------------------------------------
+# UI layout for Swim Finder AI. This file only defines re-usable widget
+# rules (<ClassName>:) - it does NOT declare a root widget. main.py builds
+# the ScreenManager and screens in Python and Kivy applies these rules to
+# them automatically (this file is auto-loaded because it matches the
+# App class name "SwimFinderApp" -> "swimfinder.kv").
+# ---------------------------------------------------------------------------
+
+<StyledButton@Button>:
+    background_normal: ''
+    background_down: ''
+    background_color: 0, 0, 0, 0
+    color: 1, 1, 1, 1
+    bold: True
+    canvas.before:
+        Color:
+            rgba: (0.13, 0.5, 0.42, 1) if self.state == 'normal' else (0.09, 0.36, 0.3, 1)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [10]
+
+<FieldLabel@Label>:
+    color: 0.82, 0.88, 0.87, 1
+    size_hint_y: None
+    height: '24dp'
+    halign: 'left'
+    valign: 'middle'
+    text_size: self.size
+    font_size: '13sp'
+    bold: True
+
+<Card@BoxLayout>:
+    orientation: 'vertical'
+    padding: '12dp'
+    spacing: '8dp'
+    size_hint_y: None
+    canvas.before:
+        Color:
+            rgba: 0.13, 0.16, 0.19, 1
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [12]
+
+<SectionInput@TextInput>:
+    multiline: False
+    size_hint_y: None
+    height: '40dp'
+    background_color: 0.2, 0.24, 0.27, 1
+    foreground_color: 1, 1, 1, 1
+    cursor_color: 0.3, 0.85, 0.65, 1
+    padding: ['10dp', '10dp', '10dp', '10dp']
+
+<SectionSpinner@Spinner>:
+    size_hint_y: None
+    height: '40dp'
+    background_color: 0.2, 0.24, 0.27, 1
+    color: 1, 1, 1, 1
+
+
+<InputScreen>:
+    name: 'input'
+    canvas.before:
+        Color:
+            rgba: 0.07, 0.09, 0.11, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    BoxLayout:
+        orientation: 'vertical'
+        padding: '16dp'
+        spacing: '8dp'
+
+        Label:
+            text: 'Swim Finder AI'
+            font_size: '26sp'
+            bold: True
+            color: 0.3, 0.85, 0.65, 1
+            size_hint_y: None
+            height: '38dp'
+
+        Label:
+            text: 'Coarse fishing swim & tackle assistant'
+            font_size: '13sp'
+            color: 0.65, 0.72, 0.71, 1
+            size_hint_y: None
+            height: '20dp'
+
+        ScrollView:
+            do_scroll_x: False
+            BoxLayout:
+                id: form_box
+                orientation: 'vertical'
+                spacing: '10dp'
+                padding: '2dp', '8dp'
+                size_hint_y: None
+                height: self.minimum_height
+
+                Card:
+                    height: self.minimum_height
+                    FieldLabel:
+                        text: 'GPS Latitude'
+                    SectionInput:
+                        id: lat_input
+                        hint_text: 'e.g. 52.4862'
+                        input_filter: 'float'
+                    FieldLabel:
+                        text: 'GPS Longitude'
+                    SectionInput:
+                        id: lon_input
+                        hint_text: 'e.g. -1.8904'
+                        input_filter: 'float'
+
+                Card:
+                    height: self.minimum_height
+                    FieldLabel:
+                        text: 'Water Type'
+                    SectionSpinner:
+                        id: water_type_spinner
+                        text: 'Lake'
+                        values: ['Lake', 'Canal', 'River', 'Reservoir']
+                    FieldLabel:
+                        text: 'Target Species'
+                    SectionSpinner:
+                        id: species_spinner
+                        text: 'Carp'
+                        values: ['Carp', 'Bream', 'Roach', 'Tench', 'Chub', 'Barbel', 'Pike', 'Perch']
+
+                Card:
+                    height: self.minimum_height
+                    FieldLabel:
+                        text: 'Time of Day'
+                    SectionSpinner:
+                        id: time_spinner
+                        text: 'Morning'
+                        values: ['Dawn', 'Morning', 'Midday', 'Afternoon', 'Dusk', 'Night']
+                    FieldLabel:
+                        text: 'Month'
+                    SectionSpinner:
+                        id: month_spinner
+                        text: 'June'
+                        values: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+                Card:
+                    height: self.minimum_height
+                    FieldLabel:
+                        text: 'Weather'
+                    SectionSpinner:
+                        id: weather_spinner
+                        text: 'Overcast'
+                        values: ['Bright sun', 'Cloudy', 'Overcast', 'Light rain', 'Heavy rain', 'Storm', 'Snow', 'Fog']
+                    FieldLabel:
+                        text: 'Wind Direction'
+                    SectionSpinner:
+                        id: wind_dir_spinner
+                        text: 'West'
+                        values: ['North', 'North-East', 'East', 'South-East', 'South', 'South-West', 'West', 'North-West']
+                    FieldLabel:
+                        text: 'Wind Speed (mph)'
+                    SectionInput:
+                        id: wind_speed_input
+                        hint_text: 'e.g. 8'
+                        input_filter: 'float'
+                    FieldLabel:
+                        text: 'Air Pressure (hPa)'
+                    SectionInput:
+                        id: pressure_input
+                        hint_text: 'e.g. 1013'
+                        input_filter: 'float'
+
+        Label:
+            id: error_label
+            text: ''
+            color: 0.95, 0.4, 0.4, 1
+            size_hint_y: None
+            height: '18dp' if self.text else 0
+            font_size: '12sp'
+
+        StyledButton:
+            text: 'Analyse Swim'
+            size_hint_y: None
+            height: '50dp'
+            font_size: '17sp'
+            on_release: app.analyse_swim()
+
+
+<ResultsScreen>:
+    name: 'results'
+    canvas.before:
+        Color:
+            rgba: 0.07, 0.09, 0.11, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    BoxLayout:
+        orientation: 'vertical'
+        padding: '16dp'
+        spacing: '10dp'
+
+        Label:
+            text: 'Swim Analysis Results'
+            font_size: '22sp'
+            bold: True
+            color: 0.3, 0.85, 0.65, 1
+            size_hint_y: None
+            height: '36dp'
+
+        ScrollView:
+            do_scroll_x: False
+            BoxLayout:
+                id: results_box
+                orientation: 'vertical'
+                spacing: '12dp'
+                padding: '2dp', '8dp'
+                size_hint_y: None
+                height: self.minimum_height
+                # Populated dynamically from Python in main.py
+
+        StyledButton:
+            text: 'Back / New Analysis'
+            size_hint_y: None
+            height: '46dp'
+            on_release: app.go_back()
