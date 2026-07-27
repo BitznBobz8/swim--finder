@@ -51,7 +51,11 @@ android.archs = arm64-v8a, armeabi-v7a
 
 # (bool) Whether the app can be backed up via Android's auto-backup
 android.allow_backup = True
-
+# (bool) Automatically accept the Android SDK license. Required for
+   # non-interactive builds (like GitHub Actions) - there's no terminal
+   # for a human to type "y" at the license prompt, so without this the
+   # build just hangs/fails waiting for an answer that never comes.
+   android.accept_sdk_license = True
 [buildozer]
 
 # (int) Log level: 0 = error only, 1 = info, 2 = debug (verbose is
