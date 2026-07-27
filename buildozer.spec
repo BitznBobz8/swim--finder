@@ -20,9 +20,11 @@ source.include_exts = py,kv,png,jpg,jpeg,atlas
 # (str) Version of your application
 version = 0.1
 
-# (list) Application requirements — python3 + kivy is all V1 needs.
-# When V2 adds live GPS/weather this list will grow (e.g. plyer, requests).
-requirements = python3,kivy==2.3.1
+# (list) Application requirements — python3 + kivy is all V1 needed.
+# V2 adds plyer for GPS access. Weather comes from the free Open-Meteo
+# API using only Python's built-in urllib, so no extra dependency
+# is needed for that part.
+requirements = python3,kivy==2.3.1,plyer
 
 # (str) Icon of the application (optional - add a 512x512 png later and
 # uncomment this line to give the app a custom home-screen icon)
@@ -34,9 +36,12 @@ orientation = portrait
 # (bool) Fullscreen (0 = keep the Android status bar visible)
 fullscreen = 0
 
-# (list) Android permissions. Empty for V1 (no network/GPS calls yet).
-# V2 will need: android.permissions = INTERNET, ACCESS_FINE_LOCATION
-android.permissions =
+# (list) Android permissions. V2 needs INTERNET (weather API calls)
+# and the two location permissions (GPS auto-fill). ACCESS_FINE_LOCATION
+# and ACCESS_COARSE_LOCATION are "dangerous" permissions requiring a
+# runtime grant, which the app requests when the location button is
+# pressed (see main.py).
+android.permissions = INTERNET, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION
 
 # (int) Target Android API - should be as high as practical
 android.api = 33

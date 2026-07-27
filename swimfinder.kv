@@ -91,6 +91,21 @@
             size_hint_y: None
             height: '20dp'
 
+        StyledButton:
+            text: 'Use My Location & Weather'
+            size_hint_y: None
+            height: '44dp'
+            font_size: '14sp'
+            on_release: app.fetch_location_and_weather()
+
+        Label:
+            id: location_status
+            text: ''
+            color: 0.55, 0.75, 0.85, 1
+            size_hint_y: None
+            height: '18dp' if self.text else 0
+            font_size: '11sp'
+
         ScrollView:
             do_scroll_x: False
             BoxLayout:

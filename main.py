@@ -20,11 +20,14 @@ class name (SwimFinderApp -> swimfinder.kv), so no manual Builder.load
 call is needed here.
 """
 
+import threading
+
 from kivy.app import App
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.core.window import Window
+from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.graphics import Color, RoundedRectangle
 
@@ -32,6 +35,7 @@ from logic.swim_analysis import analyse_swim as run_swim_analysis
 from logic.tackle_engine import recommend_tackle
 from logic.fish_predictor import predict_species
 from logic.advice_generator import generate_advice
+from logic.weather_service import fetch_weather
 
 MONTHS = [
     'January', 'February', 'March', 'April', 'May', 'June', 'July',
@@ -61,6 +65,7 @@ class SwimFinderApp(App):
         self.results_screen = ResultsScreen(name='results')
         self.sm.add_widget(self.input_screen)
         self.sm.add_widget(self.results_screen)
+        self._gps_fix_received = False
         return self.sm
 
     # ------------------------------------------------------------------
@@ -131,6 +136,120 @@ class SwimFinderApp(App):
 
     def go_back(self):
         self.sm.current = 'input'
+
+    # ------------------------------------------------------------------
+    # V2: Auto-fetch GPS location + current weather/wind/pressure/
+    # sunrise/sunset. Runs from the "Use My Location & Weather" button.
+    #
+    # Flow: request Android location permission -> start GPS -> on first
+    # fix, fill in lat/lon and stop GPS -> fetch weather for that fix on
+    # a background thread (network must never block the UI thread) ->
+    # marshal the result back onto the UI thread and fill in the rest
+    # of the form.
+    # ------------------------------------------------------------------
+    def fetch_location_and_weather(self):
+        self._gps_fix_received = False
+        self.input_screen.ids.location_status.text = "Requesting location permission..."
+        self._request_android_permissions(self._on_permissions_result)
+
+    def _request_android_permissions(self, callback):
+        """Requests the Android runtime location permission. Only
+        applies to a compiled APK (python-for-android provides the
+        'android.permissions' module); when running in Pydroid 3 this
+        import fails, so we skip straight to the callback - in that
+        case Location must instead be granted to the Pydroid 3 app
+        itself via Android Settings > Apps > Pydroid 3 > Permissions."""
+        try:
+            from android.permissions import request_permissions, Permission
+            request_permissions(
+                [Permission.ACCESS_FINE_LOCATION, Permission.ACCESS_COARSE_LOCATION],
+                callback,
+            )
+        except ImportError:
+            callback([], [])
+
+    def _on_permissions_result(self, permissions, grant_results):
+        if grant_results and not all(grant_results):
+            Clock.schedule_once(lambda dt: self._show_location_error(
+                "Location permission was denied. Enable it in Android "
+                "Settings to use this feature."), 0)
+            return
+        Clock.schedule_once(lambda dt: self._start_gps(), 0)
+
+    def _start_gps(self):
+        self.input_screen.ids.location_status.text = "Getting GPS location..."
+        try:
+            from plyer import gps
+            gps.configure(on_location=self._on_gps_location, on_status=self._on_gps_status)
+            gps.start(minTime=1000, minDistance=0)
+            # Safety timeout in case no GPS fix ever arrives (e.g. indoors)
+            Clock.schedule_once(self._gps_timeout, 20)
+        except NotImplementedError:
+            self._show_location_error("GPS is not available on this device.")
+        except Exception as exc:
+            self._show_location_error(f"Could not start GPS: {exc}")
+
+    def _on_gps_location(self, **kwargs):
+        lat = kwargs.get('lat')
+        lon = kwargs.get('lon')
+        Clock.schedule_once(lambda dt: self._handle_gps_fix(lat, lon), 0)
+
+    def _on_gps_status(self, **kwargs):
+        # Informational only - not required for the app to function.
+        pass
+
+    def _handle_gps_fix(self, lat, lon):
+        if self._gps_fix_received or lat is None or lon is None:
+            return
+        self._gps_fix_received = True
+        self._stop_gps()
+
+        ids = self.input_screen.ids
+        ids.lat_input.text = f"{lat:.5f}"
+        ids.lon_input.text = f"{lon:.5f}"
+        ids.location_status.text = "Location found. Fetching weather..."
+        threading.Thread(target=self._weather_worker, args=(lat, lon), daemon=True).start()
+
+    def _gps_timeout(self, dt):
+        if not self._gps_fix_received:
+            self._stop_gps()
+            self._show_location_error("Could not get a GPS fix - try again outdoors.")
+
+    def _stop_gps(self):
+        try:
+            from plyer import gps
+            gps.stop()
+        except Exception:
+            pass
+
+    def _weather_worker(self, lat, lon):
+        """Runs on a background thread - must not touch any Kivy widgets
+        directly, only schedule work back onto the main thread via Clock."""
+        try:
+            weather = fetch_weather(lat, lon)
+            Clock.schedule_once(lambda dt: self._on_weather_fetched(weather), 0)
+        except Exception as exc:
+            Clock.schedule_once(lambda dt: self._show_location_error(
+                f"Weather fetch failed: {exc}"), 0)
+
+    def _on_weather_fetched(self, weather):
+        ids = self.input_screen.ids
+        ids.weather_spinner.text = weather["weather"]
+        ids.wind_dir_spinner.text = weather["wind_dir"]
+        if weather["wind_speed_mph"] is not None:
+            ids.wind_speed_input.text = str(weather["wind_speed_mph"])
+        if weather["pressure_hpa"] is not None:
+            ids.pressure_input.text = str(weather["pressure_hpa"])
+        ids.location_status.text = (
+            f"Updated. Sunrise {weather['sunrise']} \u00b7 Sunset {weather['sunset']}"
+        )
+
+    def _show_location_error(self, message):
+        self.input_screen.ids.location_status.text = message
+
+    def on_stop(self):
+        # Release the GPS if the app is closed mid-fetch.
+        self._stop_gps()
 
     # ------------------------------------------------------------------
     # Results rendering helpers

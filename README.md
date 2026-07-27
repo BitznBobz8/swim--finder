@@ -19,17 +19,19 @@ Buildozer later.
 
 ```
 swim_finder_ai/
-├── main.py                    # App entry point — screens, event wiring, results rendering
+├── main.py                    # App entry point — screens, event wiring, results rendering, GPS/weather flow
 ├── swimfinder.kv              # Kivy UI layout (widgets, colours, styling)
 ├── data/
 │   ├── water_data.py          # Baseline depth/casting-distance/snag data per water type
 │   ├── species_data.py        # Seasonal activity & feeding-zone data per species
-│   └── tackle_data.py         # Baseline rod/reel/line/hook/bait setup per species
+│   ├── tackle_data.py         # Baseline rod/reel/line/hook/bait setup per species
+│   └── weather_codes.py       # Maps Open-Meteo weather/wind codes to the app's spinner text
 └── logic/
     ├── swim_analysis.py       # Works out depth, casting distance, feeding areas, snag risk, confidence
     ├── tackle_engine.py       # Turns species + swim analysis into a tackle recommendation
     ├── fish_predictor.py      # Estimates catch probability per species
-    └── advice_generator.py    # Writes the plain-English advice paragraph
+    ├── advice_generator.py    # Writes the plain-English advice paragraph
+    └── weather_service.py     # Fetches current weather/wind/pressure/sunrise/sunset (V2)
 ```
 
 ### What each file does
@@ -38,7 +40,10 @@ swim_finder_ai/
   (`InputScreen`, `ResultsScreen`). Reads and validates the form fields,
   calls the four logic engines in order, and builds the results screen
   widgets dynamically (so the number of fish species / rows can change
-  without touching the UI layout file).
+  without touching the UI layout file). Also owns the V2 GPS + weather
+  auto-fetch flow: requesting location permission, starting/stopping
+  GPS, and running the weather API call on a background thread so the
+  UI never freezes.
 - **swimfinder.kv** — All UI layout and styling in Kivy language: the
   form on the input screen, the card-based dark theme, buttons, spinners
   and text inputs. Kivy loads this automatically because its filename
@@ -51,6 +56,9 @@ swim_finder_ai/
   features), and whether it's wary of low pressure.
 - **data/tackle_data.py** — Baseline rod, reel, line, hook, feeder/lead
   weight, bait, groundbait and loose feed for each of the 8 species.
+- **data/weather_codes.py** — Converts Open-Meteo's raw weather codes
+  and wind bearing (degrees) into the same plain-English options
+  already used by the Weather and Wind Direction spinners.
 - **logic/swim_analysis.py** — Combines water type + species + weather
   + wind + pressure into an estimated depth, casting distance, feeding
   areas, margin/shelf/open-water recommendation, snag risk and a
@@ -66,6 +74,41 @@ swim_finder_ai/
 - **logic/advice_generator.py** — Builds the short "why / where to
   cast / how often to feed / what to change if weather shifts"
   paragraph from the other three engines' output.
+- **logic/weather_service.py** — Calls the free Open-Meteo API (no key
+  needed) for a given GPS fix and returns current weather, wind
+  direction/speed, pressure, and today's sunrise/sunset, already
+  converted into the app's field formats.
+
+## Version 2 — auto GPS + weather
+
+Tap **"Use My Location & Weather"** on the input screen and the app
+will:
+1. Ask for location permission (compiled APK only — see note below).
+2. Get a GPS fix and fill in Latitude/Longitude.
+3. Fetch current weather, wind direction/speed and pressure for that
+   location from Open-Meteo and fill those fields in too.
+4. Show today's sunrise/sunset time under the button.
+
+You can still edit any auto-filled field by hand afterwards before
+pressing Analyse Swim.
+
+**Running this in Pydroid 3:** install `plyer` via Pydroid's Pip
+screen (`pip install plyer`). Pydroid 3 itself is the app requesting
+location access on Android — there's no in-app permission popup like
+in the compiled APK, so you'll need to grant Location to the **Pydroid
+3** app once via Android Settings → Apps → Pydroid 3 → Permissions.
+
+**Running this as the compiled APK:** no setup needed — `plyer` is
+already bundled in via `buildozer.spec`, and the app will show
+Android's normal "Allow Swim Finder AI to access this device's
+location?" prompt the first time you tap the button.
+
+Either way, GPS needs a real fix to work — it may take a few seconds
+outdoors, and can time out (after 20 seconds) or fail indoors/without
+a clear sky view. You can always fall back to typing the coordinates
+in manually.
+
+
 
 ## Notes on the Version 1 model
 
@@ -79,7 +122,7 @@ learn from your own results.
 
 ## Roadmap (not yet built)
 
-- **V2** — Auto-fetch GPS, weather, wind, pressure, sunrise/sunset.
+- ~~**V2** — Auto-fetch GPS, weather, wind, pressure, sunrise/sunset.~~ ✅ Done
 - **V3** — SQLite catch log (venue, rig, bait, species, weight, notes, photos).
 - **V4** — Use catch-log history to refine predictions per venue/conditions.
 - **V5** — Maps, saved venues, offline mode, Excel export, catch charts,
