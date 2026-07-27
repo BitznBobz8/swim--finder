@@ -241,7 +241,7 @@ class SwimFinderApp(App):
         if weather["pressure_hpa"] is not None:
             ids.pressure_input.text = str(weather["pressure_hpa"])
         ids.location_status.text = (
-            f"Updated. Sunrise {weather['sunrise']} \u00b7 Sunset {weather['sunset']}"
+            f"Updated. Sunrise {weather['sunrise']} · Sunset {weather['sunset']}"
         )
 
     def _show_location_error(self, message):
