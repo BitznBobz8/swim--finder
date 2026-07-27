@@ -91,12 +91,21 @@
             size_hint_y: None
             height: '20dp'
 
-        StyledButton:
-            text: 'Use My Location & Weather'
+        BoxLayout:
+            orientation: 'horizontal'
             size_hint_y: None
             height: '44dp'
-            font_size: '14sp'
-            on_release: app.fetch_location_and_weather()
+            spacing: '8dp'
+
+            StyledButton:
+                text: 'Use My Location & Weather'
+                font_size: '12sp'
+                on_release: app.fetch_location_and_weather()
+
+            StyledButton:
+                text: 'Pick on Map'
+                font_size: '12sp'
+                on_release: app.open_google_maps()
 
         Label:
             id: location_status
@@ -130,6 +139,14 @@
                         id: lon_input
                         hint_text: 'e.g. -1.8904'
                         input_filter: 'float'
+                    FieldLabel:
+                        text: ''
+                    StyledButton:
+                        text: 'View Location on Map'
+                        size_hint_y: None
+                        height: '40dp'
+                        font_size: '12sp'
+                        on_release: app.open_maps_at_location()
 
                 Card:
                     height: self.minimum_height
