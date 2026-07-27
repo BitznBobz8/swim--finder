@@ -1,12 +1,10 @@
 #:kivy 2.1.0
+#:import MapView kivy_garden.mapview.MapView
+
 # ---------------------------------------------------------------------------
 # swimfinder.kv
 # ---------------------------------------------------------------------------
-# UI layout for Swim Finder AI. This file only defines re-usable widget
-# rules (<ClassName>:) - it does NOT declare a root widget. main.py builds
-# the ScreenManager and screens in Python and Kivy applies these rules to
-# them automatically (this file is auto-loaded because it matches the
-# App class name "SwimFinderApp" -> "swimfinder.kv").
+# UI layout for Swim Finder AI.
 # ---------------------------------------------------------------------------
 
 <StyledButton@Button>:
@@ -61,7 +59,6 @@
     background_color: 0.2, 0.24, 0.27, 1
     color: 1, 1, 1, 1
 
-
 <InputScreen>:
     name: 'input'
     canvas.before:
@@ -91,21 +88,13 @@
             size_hint_y: None
             height: '20dp'
 
-        BoxLayout:
-            orientation: 'horizontal'
+        # Location Auto-Fill Button
+        StyledButton:
+            text: 'Use My Location & Weather'
+            font_size: '12sp'
             size_hint_y: None
-            height: '44dp'
-            spacing: '8dp'
-
-            StyledButton:
-                text: 'Use My Location & Weather'
-                font_size: '12sp'
-                on_release: app.fetch_location_and_weather()
-
-            StyledButton:
-                text: 'Pick on Map'
-                font_size: '12sp'
-                on_release: app.open_google_maps()
+            height: '40dp'
+            on_release: app.fetch_location_and_weather()
 
         Label:
             id: location_status
@@ -125,6 +114,16 @@
                 size_hint_y: None
                 height: self.minimum_height
 
+                # Embedded Interactive Map Card
+                Card:
+                    height: '220dp'
+                    MapView:
+                        id: map_view
+                        lat: 52.4862
+                        lon: -1.8904
+                        zoom: 12
+
+                # Coordinates Card
                 Card:
                     height: self.minimum_height
                     FieldLabel:
@@ -139,15 +138,14 @@
                         id: lon_input
                         hint_text: 'e.g. -1.8904'
                         input_filter: 'float'
-                    FieldLabel:
-                        text: ''
                     StyledButton:
-                        text: 'View Location on Map'
+                        text: 'Center Map on Coordinates'
                         size_hint_y: None
                         height: '40dp'
                         font_size: '12sp'
                         on_release: app.open_maps_at_location()
 
+                # Location & Target Species Card
                 Card:
                     height: self.minimum_height
                     FieldLabel:
@@ -163,6 +161,7 @@
                         text: 'Carp'
                         values: ['Carp', 'Bream', 'Roach', 'Tench', 'Chub', 'Barbel', 'Pike', 'Perch']
 
+                # Date & Time Card
                 Card:
                     height: self.minimum_height
                     FieldLabel:
@@ -178,6 +177,7 @@
                         text: 'June'
                         values: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
+                # Weather & Environment Card
                 Card:
                     height: self.minimum_height
                     FieldLabel:
@@ -205,21 +205,20 @@
                         hint_text: 'e.g. 1013'
                         input_filter: 'float'
 
-        Label:
-            id: error_label
-            text: ''
-            color: 0.95, 0.4, 0.4, 1
-            size_hint_y: None
-            height: '18dp' if self.text else 0
-            font_size: '12sp'
+                Label:
+                    id: error_label
+                    text: ''
+                    color: 0.95, 0.4, 0.4, 1
+                    size_hint_y: None
+                    height: '18dp' if self.text else 0
+                    font_size: '12sp'
 
-        StyledButton:
-            text: 'Analyse Swim'
-            size_hint_y: None
-            height: '50dp'
-            font_size: '17sp'
-            on_release: app.analyse_swim()
-
+                StyledButton:
+                    text: 'Analyse Swim'
+                    size_hint_y: None
+                    height: '50dp'
+                    font_size: '17sp'
+                    on_release: app.analyse_swim()
 
 <ResultsScreen>:
     name: 'results'
@@ -252,7 +251,6 @@
                 padding: '2dp', '8dp'
                 size_hint_y: None
                 height: self.minimum_height
-                # Populated dynamically from Python in main.py
 
         StyledButton:
             text: 'Back / New Analysis'
