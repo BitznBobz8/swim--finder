@@ -17,11 +17,17 @@ jobs:
 
       # Uses the official, actively-maintained kivy/buildozer Docker image
       # directly (pre-built, no local Docker build step that can break).
+      # We override the entrypoint to pipe an endless stream of "y"
+      # answers into the build, so any Android SDK license prompt gets
+      # auto-accepted even though buildozer's own accept_sdk_license
+      # option isn't reliably triggering it in this image.
       - name: Build APK with official Buildozer Docker image
         run: |
           docker run --rm \
             --volume "${{ github.workspace }}":/home/user/hostcwd \
-            kivy/buildozer android debug
+            --entrypoint /bin/bash \
+            kivy/buildozer \
+            -c "yes | buildozer android debug"
 
       - name: Upload APK as a downloadable artifact
         uses: actions/upload-artifact@v4
