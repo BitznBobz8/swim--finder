@@ -21,6 +21,7 @@ call is needed here.
 """
 
 import threading
+import webbrowser
 
 from kivy.app import App
 from kivy.uix.screenmanager import Screen, ScreenManager
@@ -136,6 +137,28 @@ class SwimFinderApp(App):
 
     def go_back(self):
         self.sm.current = 'input'
+
+    def open_google_maps(self):
+        """Opens Google Maps in the browser for location selection."""
+        try:
+            webbrowser.open("https://maps.google.com")
+        except Exception as exc:
+            self.input_screen.ids.error_label.text = f"Could not open maps: {exc}"
+
+    def open_maps_at_location(self):
+        """Opens Google Maps centered at the entered coordinates."""
+        inputs, error = self._read_inputs()
+        if error or inputs['lat'] is None or inputs['lon'] is None:
+            self.input_screen.ids.error_label.text = "Enter valid latitude and longitude first"
+            return
+        
+        lat = inputs['lat']
+        lon = inputs['lon']
+        maps_url = f"https://maps.google.com/maps?q={lat},{lon}&z=15"
+        try:
+            webbrowser.open(maps_url)
+        except Exception as exc:
+            self.input_screen.ids.error_label.text = f"Could not open maps: {exc}"
 
     # ------------------------------------------------------------------
     # V2: Auto-fetch GPS location + current weather/wind/pressure/
