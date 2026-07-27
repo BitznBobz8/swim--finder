@@ -6,9 +6,7 @@ title = Swim Finder AI
 # (str) Package name (no spaces, used internally by Android)
 package.name = swimfinderai
 
-# (str) Package domain (reverse-DNS style, unique to your app - change
-# the "swimfinder" part if you ever plan to publish to the Play Store,
-# but any value works fine for a personal/sideloaded install)
+# (str) Package domain (reverse-DNS style, unique to your app)
 package.domain = org.swimfinder
 
 # (str) Source code where main.py lives
@@ -20,11 +18,10 @@ source.include_exts = py,kv,png,jpg,jpeg,atlas
 # (str) Version of your application
 version = 0.1
 
-# (list) Application requirements — includes kivy, plyer for GPS, and kivy_garden.mapview for the in-app map.
-requirements = python3,kivy==2.3.1,plyer,kivy_garden.mapview,requests,urllib3,certifi,idna,chardet
+# (list) Application requirements — includes kivy, plyer for GPS, kivy_garden.mapview for maps, and build tools
+requirements = hostpython3,python3,kivy==2.3.1,plyer,kivy_garden.mapview,requests,urllib3,certifi,idna,chardet,openssl
 
-# (str) Icon of the application (optional - add a 512x512 png later and
-# uncomment this line to give the app a custom home-screen icon)
+# (str) Icon of the application (optional - add a 512x512 png later)
 #icon.filename = %(source.dir)s/icon.png
 
 # (str) Supported orientation: landscape, sensorLandscape, portrait or all
@@ -33,38 +30,28 @@ orientation = portrait
 # (bool) Fullscreen (0 = keep the Android status bar visible)
 fullscreen = 0
 
-# (list) Android permissions. V2 needs INTERNET (weather API calls)
-# and the two location permissions (GPS auto-fill). ACCESS_FINE_LOCATION
-# and ACCESS_COARSE_LOCATION are "dangerous" permissions requiring a
-# runtime grant, which the app requests when the location button is
-# pressed (see main.py).
+# (list) Android permissions. Needs INTERNET and location permissions for GPS.
 android.permissions = INTERNET, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION
 
-# (int) Target Android API - should be as high as practical
+# (int) Target Android API
 android.api = 33
 
-# (int) Minimum Android API the APK will install on (24 = Android 7.0+,
-# covers the vast majority of phones in use)
+# (int) Minimum Android API the APK will install on
 android.minapi = 24
 
-# (list) Android CPU architectures to build for. These two cover
-# effectively all Android phones from the last several years.
+# (list) Android CPU architectures to build for
 android.archs = arm64-v8a, armeabi-v7a
 
 # (bool) Whether the app can be backed up via Android's auto-backup
 android.allow_backup = 1
 
-# (bool) Automatically accept the Android SDK license. Required for
-# non-interactive builds (like GitHub Actions) - there's no terminal
-# for a human to type "y" at the license prompt, so without this the
-# build just hangs/fails waiting for an answer that never comes.
+# (bool) Automatically accept the Android SDK license
 android.accept_sdk_license = 1
 
 [buildozer]
 
-# (int) Log level: 0 = error only, 1 = info, 2 = debug (verbose is
-# helpful the first time you build, in case something fails)
+# (int) Log level: 0 = error only, 1 = info, 2 = debug
 log_level = 2
 
-# (int) Warn if buildozer is run as root (leave as-is)
+# (int) Warn if buildozer is run as root
 warn_on_root = 1
