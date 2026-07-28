@@ -4,12 +4,6 @@ main.py
 Entry point for Swim Finder AI. Defines the Kivy App and the two Screens (Input / Results),
 reads the form values, calls the analysis engines in logic/, and renders the results dynamically
 onto the results screen.
-
-HOW TO RUN IN PYDROID 3:
-1. Copy the whole "swim_finder_ai" folder onto your device (keep the folder structure
-   exactly as-is - main.py, swimfinder.kv, data/, logic/ must all stay together).
-2. Make sure the "kivy" package is installed in Pydroid 3.
-3. Open main.py in Pydroid 3 and press Run.
 """
 
 import os
@@ -175,22 +169,41 @@ class SwimFinderApp(App):
                 callback,
             )
         except ImportError:
-            # Fallback for desktop testing environments
+            # Desktop fallback
             callback([], [True, True])
 
     def _on_permissions_result(self, permissions, grant_results):
         if grant_results and not all(grant_results):
             Clock.schedule_once(
                 lambda dt: self._show_location_error(
-                    "Location permission was denied. Enable it in Android Settings to use this feature."
+                    "Location permission denied. Enable it in Android Settings."
                 ),
                 0,
             )
             return
-        Clock.schedule_once(lambda dt: self._start_gps(), 0)
+        Clock.schedule_once(lambda dt: self._start_location_service(), 0)
 
-    def _start_gps(self):
-        self.input_screen.ids.location_status.text = "Getting GPS location..."
+    def _start_location_service(self):
+        self.input_screen.ids.location_status.text = "Acquiring location..."
+        
+        # Strategy 1: Try Native Android LocationManager (Last Known Location)
+        try:
+            from jnius import autoclass
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            Context = autoclass('android.content.Context')
+
+            activity = PythonActivity.mActivity
+            location_service = activity.getSystemService(Context.LOCATION_SERVICE)
+
+            # Check network location first (fast & works indoors), then GPS
+            loc = location_service.getLastKnownLocation('network') or location_service.getLastKnownLocation('gps')
+            if loc:
+                self._handle_gps_fix(loc.getLatitude(), loc.getLongitude())
+                return
+        except Exception:
+            pass
+
+        # Strategy 2: Fallback to Plyer GPS listener
         try:
             from plyer import gps
             gps.configure(
@@ -198,11 +211,11 @@ class SwimFinderApp(App):
                 on_status=self._on_gps_status,
             )
             gps.start(minTime=1000, minDistance=0)
-            Clock.schedule_once(self._gps_timeout, 25)
+            Clock.schedule_once(self._gps_timeout, 45)  # Extended 45s window
         except NotImplementedError:
-            self._show_location_error("GPS is not available on this device.")
+            self._show_location_error("GPS hardware not available on device.")
         except Exception as exc:
-            self._show_location_error(f"Could not start GPS: {exc}")
+            self._show_location_error(f"Could not start location: {exc}")
 
     def _on_gps_location(self, **kwargs):
         lat = kwargs.get('lat')
@@ -222,7 +235,7 @@ class SwimFinderApp(App):
         ids.lat_input.text = f"{lat:.5f}"
         ids.lon_input.text = f"{lon:.5f}"
 
-        # Center MapView on GPS location
+        # Center MapView on found location
         if hasattr(ids, 'map_view'):
             ids.map_view.center_on(lat, lon)
             ids.map_view.zoom = 14
@@ -233,7 +246,7 @@ class SwimFinderApp(App):
     def _gps_timeout(self, dt):
         if not self._gps_fix_received:
             self._stop_gps()
-            self._show_location_error("GPS search timed out - check device Location setting.")
+            self._show_location_error("Location timed out - check phone Location services/precision settings.")
 
     def _stop_gps(self):
         try:
