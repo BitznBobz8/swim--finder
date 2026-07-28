@@ -8,14 +8,27 @@ onto the results screen.
 HOW TO RUN IN PYDROID 3:
 1. Copy the whole "swim_finder_ai" folder onto your device (keep the folder structure
    exactly as-is - main.py, swimfinder.kv, data/, logic/ must all stay together).
-2. Make sure the "kivy" package is installed in Pydroid 3 (Pydroid 3 -> Pip -> search "kivy" -> install).
+2. Make sure the "kivy" package is installed in Pydroid 3.
 3. Open main.py in Pydroid 3 and press Run.
-
-Kivy automatically loads "swimfinder.kv" because it matches this App's class name
-(SwimFinderApp -> swimfinder.kv), so no manual Builder.load call is needed here.
 """
 
+import os
 import threading
+import certifi
+
+# ---------------------------------------------------------------------------
+# SSL & Map Network Configuration
+# ---------------------------------------------------------------------------
+# Point OpenSSL / urllib to certifi's bundle so Android can make HTTPS calls
+os.environ['SSL_CERT_FILE'] = certifi.where()
+
+try:
+    from kivy_garden.mapview import MapSource
+    # Set custom User-Agent to comply with OpenStreetMap tile server policies
+    MapSource.user_agent = "SwimFinderAI/1.0 (Android)"
+except ImportError:
+    pass
+
 from kivy.app import App
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.boxlayout import BoxLayout
@@ -43,8 +56,7 @@ class InputScreen(Screen):
 
 
 class ResultsScreen(Screen):
-    """Displays the Swim Analysis, Tackle Recommendation, Fish Prediction and Fishing Advice results,
-    built dynamically in Python."""
+    """Displays the Swim Analysis, Tackle Recommendation, Fish Prediction and Fishing Advice results."""
     pass
 
 
@@ -68,8 +80,7 @@ class SwimFinderApp(App):
     # Input handling
     # ------------------------------------------------------------------
     def _read_inputs(self):
-        """Reads and validates all form fields from the input screen.
-        Returns (inputs_dict, error_message). error_message is None if the inputs are valid."""
+        """Reads and validates all form fields from the input screen."""
         ids = self.input_screen.ids
         error = None
 
@@ -141,7 +152,6 @@ class SwimFinderApp(App):
         lat = inputs['lat']
         lon = inputs['lon']
 
-        # Center embedded map widget
         ids = self.input_screen.ids
         if hasattr(ids, 'map_view'):
             ids.map_view.center_on(lat, lon)
@@ -165,7 +175,8 @@ class SwimFinderApp(App):
                 callback,
             )
         except ImportError:
-            callback([], [])
+            # Fallback for desktop testing environments
+            callback([], [True, True])
 
     def _on_permissions_result(self, permissions, grant_results):
         if grant_results and not all(grant_results):
@@ -187,7 +198,7 @@ class SwimFinderApp(App):
                 on_status=self._on_gps_status,
             )
             gps.start(minTime=1000, minDistance=0)
-            Clock.schedule_once(self._gps_timeout, 20)
+            Clock.schedule_once(self._gps_timeout, 25)
         except NotImplementedError:
             self._show_location_error("GPS is not available on this device.")
         except Exception as exc:
@@ -211,7 +222,7 @@ class SwimFinderApp(App):
         ids.lat_input.text = f"{lat:.5f}"
         ids.lon_input.text = f"{lon:.5f}"
 
-        # Update MapView on GPS fix
+        # Center MapView on GPS location
         if hasattr(ids, 'map_view'):
             ids.map_view.center_on(lat, lon)
             ids.map_view.zoom = 14
@@ -222,7 +233,7 @@ class SwimFinderApp(App):
     def _gps_timeout(self, dt):
         if not self._gps_fix_received:
             self._stop_gps()
-            self._show_location_error("Could not get a GPS fix - try again outdoors.")
+            self._show_location_error("GPS search timed out - check device Location setting.")
 
     def _stop_gps(self):
         try:
